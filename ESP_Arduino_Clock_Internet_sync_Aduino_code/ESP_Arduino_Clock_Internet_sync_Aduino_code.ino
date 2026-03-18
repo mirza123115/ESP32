@@ -1,44 +1,60 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
+#include <SoftwareSerial.h>
 
-LiquidCrystal_I2C lcd(0x27,16,2);
+LiquidCrystal_I2C lcd(0x27,16,2); 
+SoftwareSerial espSerial(2,3); // RX=D2, TX=D3 (TX not used)
 
 void setup() {
-  Serial.begin(9600);  // Hardware Serial → ESP32 TX (RX0/D0)
+  Serial.begin(9600);        
+  espSerial.begin(9600);     
+
   lcd.init();
   lcd.backlight();
+  lcd.clear();
+
+  Serial.println("Arduino ready");
 }
 
 void loop() {
-  if (Serial.available()) {
-    String t = Serial.readStringUntil('\n');  // ESP32 থেকে আসা line
+  if (espSerial.available()) {
+    String t = espSerial.readStringUntil('\n');
+    t.trim(); // remove leading/trailing whitespace
 
-    // split time & date
-    t.replace(", ", ","); // simplify parsing
-
+    // split time, day, date
     int firstComma = t.indexOf(',');
     int secondComma = t.indexOf(',', firstComma + 1);
 
-    String timePart = t.substring(0, firstComma);       // HH:MM:SS AM/PM
-    String dayPart  = t.substring(firstComma + 1, secondComma); // Sun
-    String datePart = t.substring(secondComma + 1);     // 10-03-2026
+    String timePart = "";
+    String dayPart = "";
+    String datePart = "";
 
-    // LCD Row 0 → Time + AM/PM
-    /*lcd.setCursor(0,0);
-    lcd.print("                "); // clear row*/
+    if (firstComma > 0) {
+      timePart = t.substring(0, firstComma);
+      timePart.trim();
+    }
+
+    if (secondComma > firstComma) {
+      dayPart = t.substring(firstComma + 1, secondComma);
+      dayPart.trim();
+    }
+
+    if (secondComma >= 0) {
+      datePart = t.substring(secondComma + 1);
+      datePart.trim();
+    }
+
+    // clear and print
+    lcd.setCursor(0,0);
+    lcd.print("                ");
     lcd.setCursor(0,0);
     lcd.print(timePart);
 
-    // LCD Row 1 → Day + Date
-    /*lcd.setCursor(0,1);
-    lcd.print("                "); // clear row*/
+    lcd.setCursor(0,1);
+    lcd.print("                ");
     lcd.setCursor(0,1);
     lcd.print(dayPart + " " + datePart);
 
-
-    Serial.println(timePart);
-    Serial.println(dayPart + " " + datePart);
+    Serial.println(t);
   }
-
-  
 }
